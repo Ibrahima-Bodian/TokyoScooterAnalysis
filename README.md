@@ -56,5 +56,7 @@ for port in ports:
     url = f"http://172.22.215.130:{port}/{data_id}?ID={gp_id}"
     response = requests.get(url)  # HTTP, sans verify=False
     print(f"Port {port} -> status code : {response.status_code}")
-
+git add .
+git commit -m "Ajout de la fonctionnalité X"
+git push -u origin master
 
