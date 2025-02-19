@@ -18,8 +18,6 @@ import requests
 
 # Configuration de base
 ports = [8080, 8090, 8100]
-# Plage de data_id à tester (à adapter selon votre contexte)
-data_ids = range(1, 909)
 gp_id = "B_30cf3d7d"
 
 # Listes globales pour stocker les données récupérées
@@ -27,54 +25,73 @@ times_data = []
 weather_data = []
 calendar_data = []
 
-for data_id in data_ids:
+# Pour stocker l'en-tête weather lors de la première occurrence
+weather_header = None
+
+# Boucle sur data_id sans limite fixe, on arrête lorsque l'on rencontre 100 data_id consécutifs sans données
+data_id = 1
+no_data_count = 0
+threshold = 100  # Nombre de data_id consécutifs sans données pour arrêter la boucle
+
+while no_data_count < threshold:
+    data_found = False
     for port in ports:
         url = f"http://172.22.215.130:{port}/?id={data_id}&token={gp_id}"
         response = requests.get(url)
         print(f"Data ID {data_id} sur port {port} -> status code : {response.status_code}")
         if response.status_code != 200:
-            # On passe au port suivant s'il n'y a pas de 200
             continue
 
-        # Récupération du texte et séparation en lignes
-        lines = response.text.splitlines()
+        # On considère que l'ID a donné des données si au moins une requête retourne 200
+        data_found = True
 
-        # Variable pour suivre le bloc courant (weather, calendar, times)
+        lines = response.text.splitlines()
         mode = None
 
         for line in lines:
             stripped_line = line.strip()
-            
-            # Bloc "weather" : on détecte l'en-tête attendu
+
+            # Détection du bloc weather
             if stripped_line.startswith("Date\tTemperature\tHumidity\tWind.speed"):
+                if weather_header is None:
+                    weather_header = stripped_line
+                    weather_data.append(weather_header)
                 mode = "weather"
-                weather_data.append(stripped_line)
                 continue
-            
-            # Bloc "calendar" : on détecte l'en-tête attendu
+
+            # Détection du bloc calendar
             if stripped_line.startswith("Date_Hour\tDate\tSeasons\tHoliday\tFunctioning.Day"):
+                if not calendar_data:
+                    calendar_data.append(stripped_line)
                 mode = "calendar"
-                calendar_data.append(stripped_line)
                 continue
-            
-            # Bloc "times" : si la ligne commence par "Date :" ou se termine par ".000Z"
-            if stripped_line.startswith("Date :") or stripped_line.endswith(".000Z"):
+
+            # Détection du bloc times
+            if stripped_line.startswith("Date :"):
+                if not times_data:
+                    times_data.append(stripped_line)
                 mode = "times"
-                times_data.append(stripped_line)
                 continue
-            
-            # Selon le mode courant, on ajoute la ligne dans la liste correspondante
-            if mode == "weather":
+
+            # Ajout des données selon le mode courant
+            if mode == "times" and stripped_line.endswith(".000Z") and not stripped_line.startswith("Date :"):
+                times_data.append(stripped_line)
+            elif mode == "weather":
+                if stripped_line == weather_header:
+                    continue
                 weather_data.append(stripped_line)
             elif mode == "calendar":
                 calendar_data.append(stripped_line)
-            elif mode == "times":
-                times_data.append(stripped_line)
             else:
-                # Ligne non classée (on peut choisir de l'ignorer ou la traiter différemment)
                 pass
 
-# --- Écriture des données récupérées dans des fichiers séparés ---
+    if data_found:
+        no_data_count = 0
+    else:
+        no_data_count += 1
+    data_id += 1
+
+# Écriture dans des fichiers séparés
 with open("times.csv", "w", encoding="utf-8") as f:
     for t in times_data:
         f.write(t + "\n")
