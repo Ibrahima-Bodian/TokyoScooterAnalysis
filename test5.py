@@ -2,11 +2,13 @@ import requests
 import time
 
 ports = [8080, 8100]  # Ports pour locations et calendrier
+meteo_port = 8090  # Port pour météo
 gp_id = "B_30cf3d7d"
 
 # Initialisation des listes avec l'en-tête souhaité
 locations_data = ["Date"]
 calendrier_data = ["Date_Hour;Seasons;Holiday;Functioning.Day"]
+meteo_data = []  # On ne met pas l'en-tête ici pour l'instant
 
 # On démarre avec data_id = 1 et on continue tant que nous obtenons des données
 data_id = 1
@@ -28,39 +30,29 @@ while consecutive_no_data < threshold:
         lines = response.text.splitlines()
         for line in lines:
             stripped_line = line.strip()
-            # Pour le port 8100 (calendrier)
-            if port == 8100:
-                # On s'attend à une ligne d'en-tête "Date_Hour\tDate\tSeasons\tHoliday\tFunctioning.Day"
-                # On ne récupère que les données (en supprimant la colonne "Date", qui est la 2ème)
-                if stripped_line.startswith("Date_Hour\tDate\tSeasons\tHoliday\tFunctioning.Day"):
-                    # Ajout de l'en-tête déjà effectuée au départ, on l'ignore ici
-                    continue
+            # Traitement des données pour les ports de calendrier et locations
+            if port == 8100 and not stripped_line.startswith("Date_Hour\tDate\tSeasons\tHoliday\tFunctioning.Day"):
                 parts = stripped_line.split("\t")
-                if len(parts) >= 5:
-                    # Conserver uniquement Date_Hour, Seasons, Holiday, Functioning.Day
-                    new_line = ";".join([parts[0].strip(), parts[2].strip(), parts[3].strip(), parts[4].strip()])
-                    calendrier_data.append(new_line)
-            # Pour le port 8080 (locations)
-            elif port == 8080:
-                # On ignore l'en-tête "Date :" et on récupère uniquement les lignes de données
-                if stripped_line.startswith("Date :"):
-                    continue
+                new_line = ";".join([parts[0], parts[2], parts[3], parts[4]])
+                calendrier_data.append(new_line)
+            elif port == 8080 and not stripped_line.startswith("Date :"):
                 locations_data.append(stripped_line)
+
     if data_found:
         consecutive_no_data = 0
     else:
         consecutive_no_data += 1
     data_id += 1
 
-# Boucle pour récupérer les données météo sur le port 8090
-meteo_data = ["Date;Temperature;Humidity;Wind.speed;Visibility;Dew.point.temperature"]
+# Traitement spécifique pour les données météo
+meteo_header_detected = False
 data_id = 1
 consecutive_no_data = 0
 while consecutive_no_data < threshold:
-    url = f"http://172.22.215.130:8090/?id={data_id}&token={gp_id}"
+    url = f"http://172.22.215.130:{meteo_port}/?id={data_id}&token={gp_id}"
     time.sleep(0.030)
     response = requests.get(url)
-    print(f"Data ID {data_id} sur port 8090 -> status code : {response.status_code}")
+    print(f"Data ID {data_id} on port {meteo_port} -> status code : {response.status_code}")
     if response.status_code != 200:
         consecutive_no_data += 1
         data_id += 1
@@ -70,11 +62,12 @@ while consecutive_no_data < threshold:
     lines = response.text.splitlines()
     for line in lines:
         stripped_line = line.strip()
-        # On ignore l'en-tête "Date\tTemperature\tHumidity\tWind.speed" si présent
-        if stripped_line.startswith("Date\tTemperature\tHumidity\tWind.speed"):
-            continue
-        # Remplacer les tabulations par des points-virgules pour correspondre à l'en-tête
-        meteo_data.append(stripped_line.replace("\t", ";"))
+        if stripped_line.startswith("Date_Hour") and not meteo_header_detected:
+            meteo_data.append(stripped_line.replace("\t", ";"))  # Ajouter l'en-tête une seule fois
+            meteo_header_detected = True
+        elif not stripped_line.startswith("Date_Hour"):
+            meteo_data.append(stripped_line.replace("\t", ";"))
+
     data_id += 1
 
 # Écriture dans les fichiers CSV

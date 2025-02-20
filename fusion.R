@@ -1,6 +1,7 @@
 install.packages("data.table")  # à faire une seule fois
 library(data.table)
 
+
 # On suppose que vos fichiers sont nommés "weather.csv", "times.csv", "location.csv"
 # et qu'ils se trouvent dans le répertoire de travail courant
 

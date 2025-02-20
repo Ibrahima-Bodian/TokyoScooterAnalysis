@@ -1,4 +1,4 @@
-import requests
+"""import requests
 import re
 from collections import defaultdict
 
@@ -102,4 +102,109 @@ if calendar_lines:
             f.write(line + "\n")
     print("Les données calendrier ont été enregistrées dans calendar.csv.")
 else:
-    print("Aucune donnée calendrier trouvée.")
+    print("Aucune donnée calendrier trouvée.")"""
+
+
+import requests
+import time
+import os
+
+
+# 1) LOCATIONS (port 8080) et CALENDRIER (port 8100)
+
+
+ports_loca_calen = [8080, 8100]  # Ports pour locations et calendrier
+gp_id = "B_30cf3d7d"
+
+# Fichiers de sortie
+locations_file = "locations.csv"
+calendrier_file = "calendrier.csv"
+
+# On recrée les fichiers avec leur en-tête
+with open(locations_file, "w", encoding="utf-8") as f:
+    f.write("Date\n")  # pour locations : une seule colonne "Date"
+
+with open(calendrier_file, "w", encoding="utf-8") as f:
+    f.write("Date_Hour;Seasons;Holiday;Functioning.Day\n")  # pour calendrier
+
+# On démarre avec data_id = 1 et on continue tant qu'on obtient des données
+data_id = 1
+consecutive_no_data = 0
+threshold = 10  # Si 10 data_id consécutifs ne renvoient aucune donnée, on arrête
+
+while consecutive_no_data < threshold:
+    data_found = False
+    for port in ports_loca_calen:
+        url = f"http://172.22.215.130:{port}/?id={data_id}&token={gp_id}"
+        time.sleep(0.030)  # pour éviter les erreurs 429
+        response = requests.get(url)
+        print(f"[LOC/CAL] Data ID {data_id} sur port {port} -> status code : {response.status_code}")
+        if response.status_code != 200:
+            continue
+
+        data_found = True
+        lines = response.text.splitlines()
+        for line in lines:
+            stripped_line = line.strip()
+
+            if port == 8100:
+                # Pour le port 8100 (calendrier)
+                # On s'attend à une ligne d'en-tête "Date_Hour\tDate\tSeasons\tHoliday\tFunctioning.Day"
+                if stripped_line.startswith("Date_Hour\tDate\tSeasons\tHoliday\tFunctioning.Day"):
+                    continue
+                parts = stripped_line.split("\t")
+                if len(parts) >= 5:
+                    # Conserver uniquement Date_Hour, Seasons, Holiday, Functioning.Day (on ignore la 2ᵉ colonne)
+                    new_line = ";".join([parts[0].strip(), parts[2].strip(), parts[3].strip(), parts[4].strip()])
+                    with open(calendrier_file, "a", encoding="utf-8") as fcal:
+                        fcal.write(new_line + "\n")
+            elif port == 8080:
+                # Pour le port 8080 (locations)
+                if stripped_line.startswith("Date :"):
+                    continue
+                with open(locations_file, "a", encoding="utf-8") as floc:
+                    floc.write(stripped_line + "\n")
+    if data_found:
+        consecutive_no_data = 0
+    else:
+        consecutive_no_data += 1
+    data_id += 1
+
+
+# 2) METEO (port 8090)
+
+meteo_file = "meteo.csv"
+
+# On réécrit le fichier en ajoutant l'en-tête
+with open(meteo_file, "w", encoding="utf-8") as fw:
+    fw.write("Date;Temperature;Humidity;Wind.speed;Visibility;Dew.point.temperature\n")
+
+data_id = 1
+consecutive_no_data = 0
+
+while consecutive_no_data < threshold:
+    url = f"http://172.22.215.130:8090/?id={data_id}&token={gp_id}"
+    time.sleep(0.030)
+    response = requests.get(url)
+    print(f"[METEO] Data ID {data_id} sur port 8090 -> status code : {response.status_code}")
+    if response.status_code != 200:
+        consecutive_no_data += 1
+        data_id += 1
+        continue
+
+    consecutive_no_data = 0
+    lines = response.text.splitlines()
+    for line in lines:
+        stripped_line = line.strip()
+        # Détection souple de l'en-tête : si la ligne contient "Temperature", "Humidity" et "Wind.speed", on l'ignore
+        if "Temperature" in stripped_line and "Humidity" in stripped_line and "Wind.speed" in stripped_line:
+            continue
+        
+        # On suppose que chaque ligne a 6 colonnes séparées par tabulation.
+        # On remplace les tabulations par des points-virgules.
+        replaced_line = stripped_line.replace("\t", ";")
+        with open(meteo_file, "a", encoding="utf-8") as fw:
+            fw.write(replaced_line + "\n")
+    data_id += 1
+
+print("Extraction terminée !")
