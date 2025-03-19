@@ -50,9 +50,7 @@ while consecutive_no_data < threshold:
         consecutive_no_data += 1
     data_id += 1
 
-#########################################
 # Traitement spécifique pour les données météo sur le port 8090
-#########################################
 
 meteo_header_detected = False
 data_id = 1
@@ -84,9 +82,8 @@ while consecutive_no_data < threshold:
         meteo_data.append(stripped_line.replace("\t", ";"))
     data_id += 1
 
-#########################################
 # Écriture dans les fichiers CSV
-#########################################
+
 
 with open("locations.csv", "w", encoding="utf-8") as f:
     for l in locations_data:

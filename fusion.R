@@ -1,13 +1,13 @@
-"install.packages("data.table")  # à faire une seule fois
+install.packages("data.table")  # à faire une seule fois
 library(data.table)
 
 
 # On suppose que vos fichiers sont nommés "weather.csv", "times.csv", "location.csv"
 # et qu'ils se trouvent dans le répertoire de travail courant
 
-weather <- fread("weather.csv")   # Pour un gros volume, fread est plus rapide que read.csv
-times   <- fread("times.csv", fill = TRUE) 
-location <- fread("location.csv", fill = TRUE)
+weather <- fread("meteo.csv")   # Pour un gros volume, fread est plus rapide que read.csv
+times   <- fread("calendrier.csv", fill = TRUE) 
+location <- fread("locations.csv", fill = TRUE)
 
 
 head(weather)
@@ -52,6 +52,11 @@ head(unified)
 # Enfin, on écrit dans un CSV
 fwrite(unified, "unified.csv")
 """
+
+
+
+
+
 "
 
 # Installer data.table si nécessaire (à faire une seule fois)
