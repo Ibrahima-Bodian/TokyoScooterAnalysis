@@ -4,7 +4,7 @@ import time
 ports = [8080,8090]
 
 #Informations affichées :
-print ("Système d'extraction de données métérologiques et de location de scooters de Tokyo.\n version comp.20-02-2025\n")
+print ("Système d'extraction de données métérologiques et de location de scooters de Tokyo.\n version comp.20-03-2025\n")
 
 #Demande à l'opérateur d'intégrer l'intervalle des jours exportés :
 x=input("Id de départ d'extraction (1 = 01/12/2017) : ")
@@ -30,14 +30,16 @@ if vef=="Y" or vef=="y":
 #8090->météo (donne les données météo, données sur une heure par id)
 #8100->calendrier (info sur les caractéristique du jour concerné, un jour par id)
 met_line="Date_Hour\tDate\tHour\tTemperature\tHumidity\tWind_speed\tVisibility\tDew_point_temperature\tSolar_Radiation\tRainfall\tSnowfall"
-
 cal_line="Date_Hour\tDate\tSeasons\tHoliday\tFunctioning.Day"
-
 loc_line="Date :"
 
-locations_data = [loc_line]
-meteo_data = [met_line]
-calendrier_data = [cal_line]
+met_linep="Date_Hour;Date;Hour;Temperature;Humidity;Wind_speed;Visibility;Dew_point_temperature;Solar_Radiation;Rainfall;Snowfall"
+cal_linep="Date_Hour;Date;Seasons;Holiday;Functioning_Day"
+loc_linep="Date"
+
+locations_data = [loc_linep]
+meteo_data = [met_linep]
+calendrier_data = [cal_linep]
 
 # --- Récupération des calendrier ---
 for data_id in data_ids:
@@ -59,7 +61,7 @@ for data_id in data_ids:
         
         # 1) Bloc "calendrier"
         if not stripped_line.startswith(cal_line):
-            calendrier_data.append(stripped_line.replace("NA",""))
+            calendrier_data.append(stripped_line.replace("NA","").replace("\t",";"))
             continue
  
                 
@@ -91,7 +93,7 @@ for data_id in data_ids:
             
             # 2) Bloc "meteo"
             if port==8090 and not stripped_line.startswith(met_line):
-                meteo_data.append(stripped_line.replace("NA",""))
+                meteo_data.append(stripped_line.replace("NA","").replace("\t",";"))
                 continue
 
             # 3) Bloc "locations"
