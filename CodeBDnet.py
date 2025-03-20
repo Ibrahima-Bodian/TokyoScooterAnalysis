@@ -34,12 +34,12 @@ colmet=["Temperature", "Humidity","Wind_speed","Visibility","Dew_point_temperatu
 # et utiliser la façon de code loc
 
 for element in colcal:
-    for i in range(len(cal)-1):
+    for i in range(len(cal)):
         if detcal.loc[i,element] == True:
             cal.loc[i,element]=cal.loc[(i-1),element]
 
 for element in colmet:
-    for i in range(len(met)-1):
+    for i in range(len(met)):
         if detmet.loc[i,element] == True:
             met.loc[i,element]=(met.loc[(i-1),element]+met.loc[(i+1),element])/2
 
@@ -110,15 +110,15 @@ if b=="Y" or b=="y":
 
 if b==1:
     #intégration du csv calendrier
-    for i in range(len(cal)-1):
+    for i in range(len(cal)):
         cursor.execute(f'INSERT INTO calendrier VALUES ("{cal.Date_Hour[i]}", "{cal.Date[i]}", "{cal.Seasons[i]}", "{cal.Holiday[i]}", "{cal.Functioning_Day[i]}")')
 
     #intégration du csv meteo
-    for i in range(len(met)-1):
+    for i in range(len(met)):
         cursor.execute(f'INSERT INTO meteo VALUES ("{met.Date_Hour[i]}","{met.Date[i]}", "{met.Hour[i]}", "{met.Temperature[i]}", "{met.Humidity[i]}", "{met.Wind_speed[i]}","{met.Visibility[i]}", "{met.Dew_point_temperature[i]}","{met.Solar_Radiation[i]}", "{met.Rainfall[i]}","{met.Snowfall[i]}")')
 
     #intégration du csv locations
-    for i in range(len(loc)-1):
+    for i in range(len(loc)):
         cursor.execute(f'INSERT INTO locations VALUES ("{loc.Date[i]}")')
 
 
@@ -132,7 +132,7 @@ if c=="Y" or c=="y":
 if c==1:
     cal["Jour"]=pd.to_datetime(cal['Date']).dt.isocalendar().day
     cal["Jour"]=cal["Jour"].astype(str)
-    for i in range(len(cal)-1):
+    for i in range(len(cal)):
         if cal.loc[i,"Jour"]=="1":
             x="Lundi"
             cal.loc[i,"Jour"]=x
